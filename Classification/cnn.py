@@ -1,5 +1,5 @@
 """
-CNN Image Classification Testing Functions
+CNN Image Classification Functions
 
 Authors: Cole Kerkemeyer, Phillip Kornberg
 Date: 4.1.26
