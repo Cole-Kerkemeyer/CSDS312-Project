@@ -201,6 +201,13 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+#Latex 
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
