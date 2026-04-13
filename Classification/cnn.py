@@ -11,10 +11,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.optim.lr_scheduler import StepLR
-from torchvision import transforms, models
+from torchvision import transforms, models, datasets
 import pandas as pd
 from PIL import Image
-from torchvision import transforms, datasets
 
 # Setting Global Paths and CNN Specification
 csvPath = 'Data/manifest.csv'
@@ -114,7 +113,7 @@ def getValues():
         ])
     )
 
-    loader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=3)
+    loader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=0)
 
     mean = torch.zeros(3)
     std  = torch.zeros(3)

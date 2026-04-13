@@ -12,6 +12,8 @@ from PIL import Image
 import os
 from tqdm import tqdm
 
+from cnn import getValues
+
 def getImagePathsAndLabels(baseDir):
     """
     Function to Collect Tumor Type and Image Path from Test Folder
@@ -40,7 +42,6 @@ def getImagePathsAndLabels(baseDir):
 
     return imagePaths, labels
 
-
 def classifyImages(imgPaths, labels):
     """
     Function to Test Image Classification Using CNN Modle
@@ -68,12 +69,13 @@ def classifyImages(imgPaths, labels):
     model.to(device)
     model.eval()
 
+    mean,std = getValues()
+
     # Transforming Image and Normalizing
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406],
-                             [0.229, 0.224, 0.225])
+        transforms.Normalize(mean, std)
     ])
 
     # Initializing Accuracy Count
