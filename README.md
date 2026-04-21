@@ -7,7 +7,6 @@ This model uses a [PyTorch](https://github.com/pytorch/pytorch) convolutional ne
 ```
 CSDS312-PROJECT/
 ├── Classification/
-│   ├── __pycache__/
 │   ├── Data/
 │   ├── brain_tumor_model.pth           # Pre-trained classification model
 │   ├── cnn.py                          # Local CNN training
