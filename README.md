@@ -10,7 +10,8 @@ CSDS312-PROJECT/
 │   ├── __pycache__/
 │   ├── Data/
 │   ├── brain_tumor_model.pth           # Pre-trained classification model
-│   ├── cnn.py                          # CNN implementation
+│   ├── cnn.py                          # Local CNN training
+│   ├── job.slurm                       # Training script for HPC
 │   └── modelTest.py                    # Model evaluation utilities
 ├── Segmentation/
 │   ├── .gitignore
@@ -47,14 +48,19 @@ CSDS312-PROJECT/
 ## Usage
  
 ### Classification Model
-If you want to train your own CNN model on the HPC, follow the first step, otherwise you can use the pre-trained model, located at `Classification/brain_tumor_model.pth`.
+If you want to train your own CNN model on locally or on the HPC, follow the first step, otherwise you can use the pre-trained model, located at `Classification/brain_tumor_model.pth`.
 
-1. Training CNN Model:
+1. Local Training:
     ```bash
     python Clasification/cnn.py
     ```
 
-2. Testing Model:
+2. HPC/Cluster Training:
+   ```bash
+   sbatch Classification/job.slurm
+   ```
+   
+3. Testing Model:
     ```bash
     python Classification/modelTest.py
     ```
@@ -77,13 +83,7 @@ This project uses the UNET segmentation model for precise tumor boundary delinea
 
 This project now includes a lightweight OpenAI-compatible client in `llm_client.py`.
 
-1. Install dependencies:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-2. Set environment variables:
+1. Set environment variables:
 
     ```bash
     # Required
@@ -96,13 +96,13 @@ This project now includes a lightweight OpenAI-compatible client in `llm_client.
     set OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
     ```
 
-3. Quick test:
+2. Quick test:
 
     ```bash
     python llm_client.py
     ```
 
-4) Use in your scripts
+3. Use in your scripts
 
     ```python
     from llm_client import LLMClient
