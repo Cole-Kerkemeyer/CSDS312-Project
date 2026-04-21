@@ -12,7 +12,6 @@ from PIL import Image
 import os
 from tqdm import tqdm
 
-from cnn import getValues
 
 def getImagePathsAndLabels(baseDir):
     """
@@ -69,7 +68,7 @@ def classifyImages(imgPaths, labels):
     model.to(device)
     model.eval()
 
-    mean,std = getValues()
+    mean, std  = [0.1735, 0.1735, 0.1735], [0.1771, 0.1771, 0.1771]
 
     # Transforming Image and Normalizing
     transform = transforms.Compose([
