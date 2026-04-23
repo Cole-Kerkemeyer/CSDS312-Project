@@ -81,35 +81,17 @@ This project uses the UNET segmentation model for precise tumor boundary delinea
 ### LLM Integration
 
 This project now includes a lightweight OpenAI-compatible client in `llm_client.py`.
+license_name: qwen-research
+license_link: https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/blob/main/LICENSE
+language:
+  - en
+pipeline_tag: image-text-to-text
+tags:
+  - multimodal
+library_name: transformers
 
-1. Set environment variables:
 
-    ```bash
-    # Required
-    set OPENAI_API_KEY=your_api_key
 
-    # Optional: default model
-    set OPENAI_MODEL=Qwen2.5-7B-Instruct
-
-    # Optional: OpenAI-compatible provider endpoint (example: Alibaba DashScope)
-    set OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-    ```
-
-2. Quick test:
-
-    ```bash
-    python llm_client.py
-    ```
-
-3. Use in your scripts
-
-    ```python
-    from llm_client import LLMClient
-
-    llm = LLMClient(model="Qwen2.5-7B-Instruct")
-    result = llm.chat("Explain overfitting in 3 bullet points.")
-    print(result)
-    ```
 
 ## Results
 
