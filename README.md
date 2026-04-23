@@ -7,19 +7,18 @@ This model uses a [PyTorch](https://github.com/pytorch/pytorch) convolutional ne
 ```
 CSDS312-PROJECT/
 ├── Classification/
-│   ├── Data/
 │   ├── brain_tumor_model.pth           # Pre-trained classification model
 │   ├── cnn.py                          # Local CNN training
 │   ├── job.slurm                       # Training script for HPC
 │   └── modelTest.py                    # Model evaluation utilities
 ├── Segmentation/
-│   ├── .gitignore
 │   ├── model.py                        # UNET segmentation model
 │   ├── train_unet.slurm                # Training script for HPC
 │   └── train.py                        # Local training script
+├── LLM/
+│   ├── config.json                     # LLM configuration
+│   └── LLM_Client.py                   # LLM diagnosis client
 ├── .gitignore
-├── config.json                         # Project configuration
-├── llm_client.py                       # OpenAI-compatible LLM client
 ├── requirements.txt                    # Python dependencies
 └── README.md
 ```
@@ -78,7 +77,7 @@ This project uses the UNET segmentation model for precise tumor boundary delinea
    sbatch Segmentation/train_unet.slurm
    ```
 
-### LLM Integration
+### LLM Diagnosis
 
 This project now includes a lightweight OpenAI-compatible client in `llm_client.py`.
 license_name: qwen-research
@@ -89,6 +88,19 @@ pipeline_tag: image-text-to-text
 tags:
   - multimodal
 library_name: transformers
+
+This project integrates an LLM for providing diagnostic insights based on classified tumor images.
+
+1. Run the LLM client:
+   ```bash
+   python LLM/LLM_Client.py
+   ```
+
+2. There will be two prompts after running:
+   - Enter image file name: (e.g., path/to/image.jpg)
+   - Enter your question: (e.g., "What type of tumor is this?")
+
+3.  Then it will print the model's answer.
 
 
 
