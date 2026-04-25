@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1008",
+    "name": "Test Patient 9",
+    "age": 39,
+    "gender": "Male",
+    "scan_plane": "Axial",
+    "symptoms": "Sudden onset seizures and progressive right-sided motor weakness.",
+    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00022_gl_ax_t1.jpg",
+    "generated_report": null
+}

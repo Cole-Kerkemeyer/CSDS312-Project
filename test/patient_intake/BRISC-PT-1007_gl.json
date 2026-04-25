@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1007",
+    "name": "Test Patient 8",
+    "age": 30,
+    "gender": "Male",
+    "scan_plane": "Sagittal",
+    "symptoms": "Rapid cognitive decline and severe morning headaches.",
+    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00231_gl_sa_t1.jpg",
+    "generated_report": null
+}

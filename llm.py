@@ -1,89 +1,79 @@
+'''
+Usage: python llm.py --patient-data "path to patient JSON file"
+
+Patient JSON formatting example:
+
+{
+    "patient_id": "BRISC-PT-1000",
+    "name": "Test Patient 1",
+    "age": 30,
+    "gender": "Female",
+    "scan_plane": "Coronal",
+    "symptoms": "Severe hormonal imbalance, galactorrhea, and chronic fatigue.",
+    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00856_pi_co_t1.jpg",
+   s"generated_report": null
+}
+'''
+
+
+
+
+import argparse
+import json
 import os
+import sys
+import gc
 import torch
+import torch.nn.functional as F
 import torchvision.transforms as T
 from torchvision.models import resnet50
-import numpy as np
 from PIL import Image
-import gc
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import numpy as np
+from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+from qwen_vl_utils import process_vision_info
 
-# Import your custom segmentation model
-from segmentation.model_brisc import AttentionUNet
+# Import your custom Attention U-Net
+from Segmentation.model_brisc import AttentionUNet
 
 # ==========================================
-# 1. BRISC Vision Model Inference 
+# 0. Safety & Utilities
+# ==========================================
+def enforce_weights_exist(filepath):
+    """Terminates the pipeline immediately if model weights are missing."""
+    if not os.path.exists(filepath):
+        print(f"\n[CRITICAL ERROR] Required model weights not found at: {filepath}")
+        print("Pipeline terminated to prevent generating hallucinated reports using random weights.")
+        sys.exit(1)
+
+# ==========================================
+# 1. Expert Vision Models (BRISC)
 # ==========================================
 
-# BRISC Class Mapping: 
-# 0: No Tumor, 1: Glioma, 2: Meningioma, 3: Pituitary Tumor
 CLASS_NAMES = {0: "No Tumor", 1: "Glioma", 2: "Meningioma", 3: "Pituitary Tumor"}
 
-def run_brisc_classifier(t1_image_path, checkpoint_path="checkpoints/classifier_best.pth"):
-    """
-    Loads a ResNet50 classification model, preprocesses the T1 image, 
-    and predicts the tumor class.
-    """
-    print(f"Running Classification on {t1_image_path}...")
+def run_brisc_classifier(image_path, checkpoint_path="checkpoints/classifier.pth"):
+    print(f"[*] Running Expert Classifier on {os.path.basename(image_path)}...")
+    enforce_weights_exist(checkpoint_path)
+    
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # 1. Initialize Model Architecture (Assuming a ResNet50 for 4 classes)
+    
+    # 1. Match your exact training architecture
     model = resnet50(weights=None)
-    model.fc = torch.nn.Linear(model.fc.in_features, 4) 
+    model.fc = torch.nn.Sequential(
+        torch.nn.Dropout(0.4), 
+        torch.nn.Linear(2048, 4)
+    )
     
-    # 2. Load Weights safely (strips 'module.' if saved via DataParallel)
-    if os.path.exists(checkpoint_path):
-        state_dict = torch.load(checkpoint_path, map_location=device)
-        clean_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
-        model.load_state_dict(clean_state_dict)
-    else:
-        print(f"WARNING: Classifier checkpoint not found at {checkpoint_path}. Using random weights!")
-        
-    model.to(device)
-    model.eval()
-
-    # 3. Preprocess Image (Standard ImageNet transforms used for ResNet)
-    image = Image.open(t1_image_path).convert("RGB")
-    transform = T.Compose([
-        T.Resize((256, 256)),
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    img_tensor = transform(image).unsqueeze(0).to(device) # Shape: (1, 3, 256, 256)
-
-    # 4. Run Inference
-    with torch.no_grad():
-        outputs = model(img_tensor)
-        _, predicted_idx = torch.max(outputs, 1)
-        
-    return CLASS_NAMES[predicted_idx.item()]
-
-
-def run_brisc_segmenter(t1_image_path, checkpoint_path="checkpoints/attention_unet_best.pth"):
-    """
-    Loads the Attention U-Net, predicts the tumor mask, 
-    and calculates the physical area of the tumor.
-    """
-    print(f"Running Segmentation on {t1_image_path}...")
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    # 1. Initialize Model Architecture
-    model = AttentionUNet(in_channels=3, num_classes=1)
+    # 2. Extract the weights from your custom dictionary
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    state_dict = checkpoint.get('model_state_dict', checkpoint)
     
-    # 2. Load Weights safely
-    if os.path.exists(checkpoint_path):
-        state_dict = torch.load(checkpoint_path, map_location=device)
-        clean_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
-        model.load_state_dict(clean_state_dict)
-    else:
-        print(f"WARNING: Segmenter checkpoint not found at {checkpoint_path}. Using random weights!")
-        
-    model.to(device)
-    model.eval()
+    # Clean prefix and load
+    clean_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+    model.load_state_dict(clean_state_dict)
+    model.to(device).eval()
 
-    # 3. Preprocess Image (Must match Albumentations validation logic EXACTLY)
-    # Using torchvision here to avoid needing to import albumentations in inference,
-    # mathematically equivalent to Albumentations ToTensorV2 and Normalize.
-    image = Image.open(t1_image_path).convert("RGB")
+    image = Image.open(image_path).convert("RGB")
     transform = T.Compose([
         T.Resize((256, 256)),
         T.ToTensor(),
@@ -91,119 +81,209 @@ def run_brisc_segmenter(t1_image_path, checkpoint_path="checkpoints/attention_un
     ])
     img_tensor = transform(image).unsqueeze(0).to(device)
 
-    # 4. Run Inference
+    with torch.no_grad():
+        outputs = model(img_tensor)
+        # Calculate percentages for all classes
+        probs = F.softmax(outputs, dim=1)[0]
+        
+    class_probabilities = {CLASS_NAMES[i]: round(probs[i].item() * 100, 2) for i in range(4)}
+    return class_probabilities
+
+
+def run_brisc_segmenter(image_path, checkpoint_path="checkpoints/attention_unet_best.pth"):
+    print(f"[*] Running Expert Segmenter on {os.path.basename(image_path)}...")
+    enforce_weights_exist(checkpoint_path)
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = AttentionUNet(in_channels=3, num_classes=1)
+    
+    state_dict = torch.load(checkpoint_path, map_location=device)
+    clean_state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+    model.load_state_dict(clean_state_dict)
+    model.to(device).eval()
+
+    orig_image = Image.open(image_path).convert("RGBA").resize((256, 256))
+    transform = T.Compose([
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    img_tensor = transform(orig_image.convert("RGB")).unsqueeze(0).to(device)
+
     with torch.no_grad():
         logits = model(img_tensor)
-        probs = torch.sigmoid(logits)
-        preds = (probs > 0.5).float() # Binary mask (1 for tumor, 0 for background)
+        preds = (torch.sigmoid(logits) > 0.5).float()
         
-    # 5. Calculate Physical Area
-    tumor_pixels = preds.sum().item()
+    tumor_area_mm2 = preds.sum().item() * 1.0 
     
-    # Since BRISC converts original MRIs to 256x256 JPEGs, physical DICOM spacing is lost.
-    # For clinical pipelines, you define a calibration factor (e.g., 1 pixel = 0.8 mm²)
-    PIXEL_TO_MM2_RATIO = 1.0 
+    # Generate a visual overlay for the VLM
+    mask_np = preds.squeeze().cpu().numpy()
+    mask_img = Image.fromarray((mask_np * 255).astype(np.uint8)).convert("L")
     
-    tumor_area_mm2 = tumor_pixels * PIXEL_TO_MM2_RATIO
-    return round(tumor_area_mm2, 2)
+    # Create a red overlay where the mask is positive
+    red_layer = Image.new("RGBA", orig_image.size, (255, 0, 0, 128))
+    mask_rgba = Image.new("RGBA", orig_image.size, (0, 0, 0, 0))
+    mask_rgba.paste(red_layer, (0, 0), mask_img)
+    
+    # Blend the original image with the red AI mask
+    overlay_image = Image.alpha_composite(orig_image, mask_rgba).convert("RGB")
+
+    return round(tumor_area_mm2, 2), overlay_image
+
 
 def free_gpu_memory():
+    print("[*] Unloading Expert Models and freeing VRAM...")
     gc.collect()
     torch.cuda.empty_cache()
 
 # ==========================================
-# 2. LLM Report Generation
+# 2. Vision-Language Model (VLM) Engine
 # ==========================================
-def generate_radiology_report(patient_info, tumor_class, tumor_area):
-    model_name = "Qwen/Qwen2.5-7B-Instruct"
+
+def generate_vlm_report(patient_data, class_probs, tumor_area, overlay_image):
+    model_name = "Qwen/Qwen2.5-VL-7B-Instruct"
+    print(f"\n[*] Booting Multimodal Agent ({model_name})...")
     
-    print(f"\nLoading LLM ({model_name})...")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    llm = AutoModelForCausalLM.from_pretrained(
-        model_name, 
-        torch_dtype="auto", 
-        device_map="auto" 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        model_name, torch_dtype="auto", device_map="auto"
     )
+    processor = AutoProcessor.from_pretrained(model_name)
 
-    system_prompt = """You are an expert, board-certified neuroradiologist. 
-Your task is to write a formal clinical MRI brain scan report based on AI-extracted findings from a T1-weighted MRI.
+    # Format the probability distribution nicely
+    prob_text = "\n".join([f"  - {k}: {v}%" for k, v in class_probs.items()])
+    
+    findings_text = f"ML Classification Probabilities:\n{prob_text}\n\nML Segmentation Area: {tumor_area} mm²."
 
-Your report MUST adhere to this structure:
-1. CLINICAL INDICATION: Patient history.
-2. TECHNIQUE: Note that a single-plane T1-weighted MRI was reviewed.
-3. FINDINGS: Detail the tumor classification and cross-sectional area. 
-4. IMPRESSION: A concise conclusion summarizing the diagnosis.
+    # 2. UPDATED PROMPT: Acknowledge both images and add conflict resolution rules
+    system_prompt = """You are an expert, board-certified neuroradiologist. Your task is to synthesize clinical history, visual MRI assessment, and quantitative ML data into a formal, medically accurate radiology report.
 
-Maintain a highly professional, objective clinical tone. Do not invent findings."""
+CRITICAL REASONING RULES:
+1. You are the final clinical judge. If ML classification probabilities contradict the ML segmentation area (e.g., high probability of 'No Tumor' but a large mask is drawn), or if the patient symptoms contradict the scan, note the discrepancy and recommend clinical correlation. 
+2. Do not invent or hallucinate findings, patient symptoms, or medical advice not supported by the provided data.
 
-    if tumor_class == "No Tumor" or tumor_area == 0:
-        findings_text = "No focal lesions, masses, or abnormalities detected. Volume of interest mask measures 0 mm²."
-    else:
-        findings_text = f"A mass consistent with a {tumor_class} is identified. The cross-sectional area of the segmented lesion is approximately {tumor_area} mm²."
-
-    user_prompt = f"""
-Please generate the radiology report using the following data:
-
-[PATIENT INFO]
-Name: {patient_info['name']}
-Age: {patient_info['age']}
-Gender: {patient_info['gender']}
-Symptoms: {patient_info['symptoms']}
-
-[AI FINDINGS]
-{findings_text}
+REPORT STRUCTURE AND STYLE REQUIREMENTS:
+1. CLINICAL INDICATION: A brief summary of the patient's history and symptoms.
+2. TECHNIQUE: State that a T1-weighted MRI was evaluated alongside ML quantitative segmentation and classification tools.
+3. FINDINGS: This must be a COMPREHENSIVE, highly descriptive, and detailed paragraph. 
+   - Describe the exact anatomical location based on the unaltered scan and the red mask.
+   - Describe the visual characteristics of the lesion (e.g., margins, homogeneity, relationship to surrounding structures, mass effect, or midline shift).
+   - Explicitly integrate the ML classification probabilities (addressing differential diagnoses) and the exact measured segmentation area.
+4. IMPRESSION: This must be EXTREMELY CONCISE. 
+   - Provide a bottom-line clinical conclusion.
+   - Use a numbered list if there are multiple distinct conclusions.
+   - Do NOT discuss ML probabilities, pixel areas, or software tools here. Focus purely on the human medical diagnosis.
 """
+    user_prompt = f"""Please review the two attached images:
+- Image 1: The unaltered, original {patient_data.get('scan_plane', '')} T1-weighted MRI scan.
+- Image 2: The same scan with a ML-generated tumor segmentation overlay.
 
+[PATIENT HISTORY]
+Name: {patient_data.get('name', 'Unknown')}
+Age: {patient_data.get('age', 'Unknown')}
+Symptoms: {patient_data.get('symptoms', 'None reported')}
+
+[AI EXPERT FINDINGS]
+{findings_text}
+
+Generate the formal radiology report based on the rules provided."""
+
+    # 3. PASS BOTH IMAGES to the VLM
     messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
+        # 1. The System Prompt (Rules & Persona)
+        {
+            "role": "system",
+            "content": [{"type": "text", "text": system_prompt}]
+        },
+        # 2. The User Prompt (Images & Data)
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "image": patient_data["scan_path"], # The Clean Original
+                },
+                {
+                    "type": "image",
+                    "image": overlay_image,             # The AI Overlay
+                },
+                {
+                    "type": "text", 
+                    "text": user_prompt                 # The Patient Data
+                },
+            ],
+        }
     ]
-    
-    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    model_inputs = tokenizer([text], return_tensors="pt").to(llm.device)
 
-    print("\n" + "="*50)
-    print("GENERATING SYNTHETIC RADIOLOGY REPORT")
-    print("="*50)
+    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    image_inputs, video_inputs = process_vision_info(messages)
     
-    generated_ids = llm.generate(
-        **model_inputs,
-        max_new_tokens=400,
-        temperature=0.2, 
-        do_sample=True
+    inputs = processor(
+        text=[text],
+        images=image_inputs,
+        videos=video_inputs,
+        padding=True,
+        return_tensors="pt",
+    ).to(device)
+
+    print("\n" + "="*60)
+    print("GENERATING MULTIMODAL RADIOLOGY REPORT")
+    print("="*60)
+
+    generated_ids = model.generate(
+        **inputs, max_new_tokens=1024, temperature=0.2, do_sample=True
     )
     
-    generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
+    generated_ids_trimmed = [
+        out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
     ]
+    
+    output_text = processor.batch_decode(
+        generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
+    )
+    
+    final_report = output_text[0]
+    print(final_report)
+    print("="*60)
+    
+    return final_report
 
-    response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    print(response)
-    print("="*50)
 
 # ==========================================
-# 3. Execute Pipeline
+# 3. Pipeline Execution
 # ==========================================
-if __name__ == "__main__":
-    # Simulated database fetch for the patient
-    patient_data = {
-        "name": "Sarah Jenkins",
-        "age": 42,
-        "gender": "Female",
-        "symptoms": "Progressive vision loss in the right eye and mild chronic headaches."
-    }
-    
-    # Path to the actual T1 image file you want to evaluate
-    target_scan = "./data/brisc2025/segmentation_task/test/images/test_001.jpg"
-    
-    # Make sure you create a "checkpoints" folder and place your trained .pth files there!
-    
-    # 1. Run Computer Vision Models
-    predicted_class = run_brisc_classifier(target_scan, checkpoint_path="checkpoints/classifier_best.pth")
-    predicted_area = run_brisc_segmenter(target_scan, checkpoint_path="checkpoints/attention_unet_best.pth")
-    
-    # 2. Flush GPU to make room for the Large Language Model
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--patient-data", type=str, required=True, help="Path to JSON file.")
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+
+    if not os.path.exists(args.patient_data):
+        print(f"Error: Could not find patient JSON file at {args.patient_data}")
+        sys.exit(1)
+        
+    with open(args.patient_data, 'r') as f:
+        patient_data = json.load(f)
+
+    scan_path = patient_data.get("scan_path")
+    if not scan_path or not os.path.exists(scan_path):
+        print(f"Error: Scan path '{scan_path}' is invalid or missing from JSON.")
+        sys.exit(1)
+
+    print(f"\n--- Starting Automated Pipeline for Patient: {patient_data.get('name')} ---")
+
+    # 1. Extract Expert Data
+    class_probs = run_brisc_classifier(scan_path)
+    tumor_area, overlay_image = run_brisc_segmenter(scan_path)
+
+    # 2. Flush VRAM
     free_gpu_memory()
-    
-    # 3. Generate Clinical Report
-    generate_radiology_report(patient_data, predicted_class, predicted_area)
+
+    # 3. Multimodal Reasoning
+    generate_vlm_report(patient_data, class_probs, tumor_area, overlay_image)
+
+if __name__ == "__main__":
+    main()

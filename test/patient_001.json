@@ -1,0 +1,8 @@
+{
+    "patient_id": "BRISC-992",
+    "name": "Jan Doe",
+    "age": 42,
+    "gender": "Female",
+    "symptoms": "Progressive vision loss in the right eye and mild chronic headaches.",
+    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00001_gl_ax_t1.jpg"
+}

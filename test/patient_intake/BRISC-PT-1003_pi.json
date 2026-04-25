@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1003",
+    "name": "Test Patient 4",
+    "age": 60,
+    "gender": "Male",
+    "scan_plane": "Coronal",
+    "symptoms": "Progressive vision blurring and localized frontal headache.",
+    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00870_pi_co_t1.jpg",
+    "generated_report": null
+}

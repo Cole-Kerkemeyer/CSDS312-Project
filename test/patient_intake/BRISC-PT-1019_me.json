@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1019",
+    "name": "Test Patient 20",
+    "age": 35,
+    "gender": "Male",
+    "scan_plane": "Sagittal",
+    "symptoms": "Incidental finding after a minor fall; patient is currently asymptomatic.",
+    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00514_me_sa_t1.jpg",
+    "generated_report": null
+}
