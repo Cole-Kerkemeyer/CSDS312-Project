@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1004",
+    "name": "Test Patient 5",
+    "age": 39,
+    "gender": "Male",
+    "scan_plane": "Axial",
+    "symptoms": "Incidental finding after a minor fall; patient is currently asymptomatic.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00292_me_ax_t1.jpg",
+    "generated_report": null
+}

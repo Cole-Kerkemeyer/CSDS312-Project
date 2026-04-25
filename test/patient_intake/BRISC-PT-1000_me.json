@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1000",
+    "name": "Test Patient 1",
+    "age": 60,
+    "gender": "Male",
+    "scan_plane": "Coronal",
+    "symptoms": "Slowly progressive unilateral hearing loss and mild facial numbness.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00402_me_co_t1.jpg",
+    "generated_report": null
+}

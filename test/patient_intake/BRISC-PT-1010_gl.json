@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1010",
+    "name": "Test Patient 11",
+    "age": 63,
+    "gender": "Male",
+    "scan_plane": "Coronal",
+    "symptoms": "Progressive aphasia (difficulty speaking) and personality changes.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00136_gl_co_t1.jpg",
+    "generated_report": null
+}

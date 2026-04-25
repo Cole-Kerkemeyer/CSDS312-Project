@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import shutil
 
 # 1. Clinical Symptom Mapping
 SYMPTOM_MAP = {
@@ -45,28 +46,28 @@ PLANE_MAP = {
 }
 
 def generate_patient_jsons(image_dir, output_dir, num_cases=20):
+    # 1. Create Base Output Directory
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+        
+    # 2. Create the new Images Subdirectory
+    image_output_dir = os.path.join(output_dir, "images")
+    if not os.path.exists(image_output_dir):
+        os.makedirs(image_output_dir)
 
-    # Get all jpgs in the directory
     all_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg')]
-    
-    # Shuffle to get a random mix of tumors and planes
     random.shuffle(all_files)
     selected_files = all_files[:num_cases]
 
     print(f"Generating {len(selected_files)} synthetic patient records...\n")
 
     for i, filename in enumerate(selected_files):
-        # Example filename: brisc2025_test_00001_gl_ax_t1.jpg
         parts = filename.replace('.jpg', '').split('_')
         
-        # Safely extract codes based on the BRISC naming convention
         try:
-            tumor_code = parts[3] # 'gl', 'me', 'pi', 'no'
-            plane_code = parts[4] # 'ax', 'co', 'sa'
+            tumor_code = parts[3] 
+            plane_code = parts[4] 
         except IndexError:
-            print(f"[!] Skipping {filename}: Unrecognized naming format.")
             continue
 
         if tumor_code not in SYMPTOM_MAP or plane_code not in PLANE_MAP:
@@ -76,15 +77,20 @@ def generate_patient_jsons(image_dir, output_dir, num_cases=20):
         plane_name = PLANE_MAP[plane_code]
         symptom = random.choice(SYMPTOM_MAP[tumor_code]['symptoms'])
 
-        # Build the JSON payload
+        # 3. Copy the Image to the localized folder
+        source_image_path = os.path.join(image_dir, filename)
+        target_image_path = os.path.join(image_output_dir, filename)
+        shutil.copy2(source_image_path, target_image_path)
+
+        # 4. Build the JSON payload (Notice scan_path points to target_image_path now)
         patient_data = {
             "patient_id": patient_id,
             "name": f"Test Patient {i+1}",
             "age": random.randint(30, 75),
             "gender": random.choice(["Male", "Female"]),
-            "scan_plane": plane_name,  # <--- We save this so the VLM knows!
+            "scan_plane": plane_name,  
             "symptoms": symptom,
-            "scan_path": os.path.join(image_dir, filename),
+            "scan_path": target_image_path, 
             "generated_report": None
         }
 
@@ -96,8 +102,7 @@ def generate_patient_jsons(image_dir, output_dir, num_cases=20):
         print(f"[+] Created {patient_id} -> {tumor_code.upper()} ({plane_name})")
 
 if __name__ == "__main__":
-    # Point this to your actual test images folder
-    IMAGE_DIRECTORY = "data/brisc2025/segmentation_task/test/images"
-    OUTPUT_DIRECTORY = ".test/patient_intake/"
+    IMAGE_DIRECTORY = "./data/brisc2025/segmentation_task/test/images/"
+    OUTPUT_DIRECTORY = "./test/patient_intake/"
     
     generate_patient_jsons(IMAGE_DIRECTORY, OUTPUT_DIRECTORY, num_cases=20)

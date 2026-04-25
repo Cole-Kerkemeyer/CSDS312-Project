@@ -1,10 +1,10 @@
 {
     "patient_id": "BRISC-PT-1017",
     "name": "Test Patient 18",
-    "age": 42,
-    "gender": "Female",
-    "scan_plane": "Axial",
-    "symptoms": "Progressive vision blurring and localized frontal headache.",
-    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00740_pi_ax_t1.jpg",
+    "age": 59,
+    "gender": "Male",
+    "scan_plane": "Sagittal",
+    "symptoms": "Severe hormonal imbalance, galactorrhea, and chronic fatigue.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00938_pi_sa_t1.jpg",
     "generated_report": null
 }

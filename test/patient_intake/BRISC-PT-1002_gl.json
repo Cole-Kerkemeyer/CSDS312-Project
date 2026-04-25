@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1002",
+    "name": "Test Patient 3",
+    "age": 38,
+    "gender": "Female",
+    "scan_plane": "Sagittal",
+    "symptoms": "Progressive aphasia (difficulty speaking) and personality changes.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00242_gl_sa_t1.jpg",
+    "generated_report": null
+}

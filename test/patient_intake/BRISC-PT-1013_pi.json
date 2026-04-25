@@ -1,10 +1,10 @@
 {
     "patient_id": "BRISC-PT-1013",
     "name": "Test Patient 14",
-    "age": 41,
+    "age": 35,
     "gender": "Male",
     "scan_plane": "Sagittal",
-    "symptoms": "Progressive vision blurring and localized frontal headache.",
-    "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00972_pi_sa_t1.jpg",
+    "symptoms": "Bitemporal hemianopsia (loss of peripheral vision) and unexplained weight gain.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00931_pi_sa_t1.jpg",
     "generated_report": null
 }

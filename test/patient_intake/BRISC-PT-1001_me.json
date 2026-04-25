@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1001",
+    "name": "Test Patient 2",
+    "age": 67,
+    "gender": "Female",
+    "scan_plane": "Coronal",
+    "symptoms": "Chronic, dull headaches over the past 6 months and focal cranial nerve deficits.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00404_me_co_t1.jpg",
+    "generated_report": null
+}

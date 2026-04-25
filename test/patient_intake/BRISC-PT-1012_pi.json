@@ -1,0 +1,10 @@
+{
+    "patient_id": "BRISC-PT-1012",
+    "name": "Test Patient 13",
+    "age": 58,
+    "gender": "Female",
+    "scan_plane": "Coronal",
+    "symptoms": "Severe hormonal imbalance, galactorrhea, and chronic fatigue.",
+    "scan_path": "./test/patient_intake/images/brisc2025_test_00863_pi_co_t1.jpg",
+    "generated_report": null
+}
