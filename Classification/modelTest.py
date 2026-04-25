@@ -1,10 +1,8 @@
 """
 CNN Image Classification Testing Functions
-
 Authors: Cole Kerkemeyer, Phillip Kornberg
 Date: 4.1.26
 """
-
 import torch
 import torch.nn as nn
 from torchvision import transforms, models
@@ -16,9 +14,9 @@ from tqdm import tqdm
 def getImagePathsAndLabels(baseDir):
     """
     Function to Collect Tumor Type and Image Path from Test Folder
-    
+
     : param str baseDir - Path of Base Directory
-    
+
     : return arr imagePaths - Path of All Images
     : return arr labels - Labels of All Images
     """
@@ -47,8 +45,9 @@ def classifyImages(imgPaths, labels):
     
     : param arr imgPaths - Path of Images to Test
     : param arr labels - Type of Tumor for Accuracy Calculation
-    
-    : return float accuracy - Accuracy of Predictions
+
+    : return float accuracy - Overall Accuracy of Predictions
+    : return dict classAccuracies - Per-Class Accuracy of Predictions
     """
     # Specifying Device Usage
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -79,6 +78,8 @@ def classifyImages(imgPaths, labels):
 
     # Initializing Accuracy Count
     correctCount = 0
+    classCorrect = {cls: 0 for cls in classToIdx}
+    classTotal   = {cls: 0 for cls in classToIdx}
 
     # Loop through all images
     for imgPath, label in tqdm(zip(imgPaths, labels), total=len(imgPaths), desc="Classifying Images"):
@@ -93,13 +94,25 @@ def classifyImages(imgPaths, labels):
 
         # Checking If Prediction Is Correct
         trueIdx = classToIdx[label]
+        classTotal[label] += 1
         if predIdx == trueIdx:
             correctCount += 1
+            classCorrect[label] += 1
 
     # Calculating and Returning Accuracy
     accuracy = correctCount / len(imgPaths)
     print(f"\nOverall Accuracy: {accuracy:.2%}")
-    return accuracy
+    # Calculating and Printing Per-Class Accuracy
+    print("\nPer-Class Accuracy:")
+    print("-" * 30)
+    classAccuracies = {}
+    for cls in classToIdx:
+        classAccuracy = classCorrect[cls] / classTotal[cls] if classTotal[cls] > 0 else 0.0
+        classAccuracies[cls] = classAccuracy
+        print(f"  {cls:<15} {classAccuracy:.2%}  ({classCorrect[cls]}/{classTotal[cls]})")
+
+    return accuracy, classAccuracies
+
 
 # Classifying Test Images
 imagePaths, labels = getImagePathsAndLabels("Data/test")
