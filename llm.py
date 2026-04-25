@@ -7,11 +7,11 @@ Patient JSON formatting example:
     "patient_id": "BRISC-PT-1000",
     "name": "Test Patient 1",
     "age": 30,
-    "gender": "Female",
+    "sex": "Female",
     "scan_plane": "Coronal",
     "symptoms": "Severe hormonal imbalance, galactorrhea, and chronic fatigue.",
     "scan_path": "data/brisc2025/segmentation_task/test/images/brisc2025_test_00856_pi_co_t1.jpg",
-   s"generated_report": null
+    "generated_report": null
 }
 '''
 
@@ -159,7 +159,7 @@ def generate_vlm_report(patient_data, class_probs, tumor_area, overlay_image):
     system_prompt = """You are an expert, board-certified neuroradiologist. Your task is to synthesize clinical history, visual MRI assessment, and quantitative ML data into a formal, medically accurate radiology report.
 
 CRITICAL REASONING RULES:
-1. You are the final clinical judge. If ML classification probabilities contradict the ML segmentation area (e.g., high probability of 'No Tumor' but a large mask is drawn), or if the patient symptoms contradict the scan, note the discrepancy and recommend clinical correlation. 
+1. You are the final clinical judge. If the ML classification probabilities fundamentally contradict the pathognomonic symptoms (e.g., galactorrhea pointing to a pituitary lesion while ML predicts meningioma) or the visual anatomical location, you must explicitly state that the ML prediction is likely erroneous. Base your final IMPRESSION strictly on the visual evidence and clinical symptoms, not the ML probabilities.
 2. Do not invent or hallucinate findings, patient symptoms, or medical advice not supported by the provided data.
 
 REPORT STRUCTURE AND STYLE REQUIREMENTS:
@@ -181,9 +181,10 @@ REPORT STRUCTURE AND STYLE REQUIREMENTS:
 [PATIENT HISTORY]
 Name: {patient_data.get('name', 'Unknown')}
 Age: {patient_data.get('age', 'Unknown')}
+Sex: {patient_data.get('gender', 'Unknown')}
 Symptoms: {patient_data.get('symptoms', 'None reported')}
 
-[AI EXPERT FINDINGS]
+[ML MODEL FINDINGS]
 {findings_text}
 
 Generate the formal radiology report based on the rules provided."""
