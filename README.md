@@ -114,7 +114,7 @@ CNN Training:
 CNN Accuracy:
 ```bash
 Classifying Images: 100%|███████████████████████████| 1000/1000 [00:15<00:00, 64.24it/s]
-Overall Accuracy: 99.00%
+Overall Accuracy: 98.00%
 ```
 
 ### Segmentation Training and Accuracy 
